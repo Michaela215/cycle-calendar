@@ -38,7 +38,7 @@ class _CalendarPageState extends State<CalendarPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Feel&Flow 🌸')),
+      appBar: AppBar(title: const Text('Feel & Flow 🌸')),
       body: TableCalendar(
         locale: 'cs_CZ',
         firstDay: DateTime.utc(2020, 1, 1),
