@@ -1,0 +1,27 @@
+name: Flutter testy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Stažení kódu
+        uses: actions/checkout@v6
+
+      - name: Instalace Flutteru
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Stažení balíčků
+        run: flutter pub get
+
+      - name: Spuštění testů
+        run: flutter test
