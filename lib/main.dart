@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:table_calendar/table_calendar.dart';
 
+
+import 'period_storage.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('cs_CZ');
@@ -32,16 +35,34 @@ class CalendarPage extends StatefulWidget {
 }
 
 class _CalendarPageState extends State<CalendarPage> {
+  final _storage = PeriodStorage();
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   DateTime? _periodStart;
   DateTime? _periodEnd;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSaved();
+  }
+
+  Future<void> _loadSaved() async {
+    final start = await _storage.loadStart();
+    final end = await _storage.loadEnd();
+    if (!mounted) return;
+    setState(() {
+      _periodStart = start;
+      _periodEnd = end;
+    });
+  }
 
   void _setStart() {
     setState(() {
       _periodStart = _selectedDay;
       _periodEnd = null;
     });
+    _storage.save(_periodStart, _periodEnd);
   }
 
   void _setEnd() {
@@ -58,6 +79,7 @@ class _CalendarPageState extends State<CalendarPage> {
     setState(() {
       _periodEnd = day;
     });
+    _storage.save(_periodStart, _periodEnd);
   }
 
   void _showMessage(String text) {
