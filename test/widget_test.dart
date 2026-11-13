@@ -62,7 +62,7 @@ void main() {
       await klepni(tester, find.text('20'));
       await klepni(tester, find.text('Konec'));
 
-      expect(find.text('Nejdřív označte začátek menstruace.'),
+      expect(find.text('Nejdřív označzačátek menstruace.'),
           findsOneWidget);
     });
 

@@ -3,6 +3,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 
+import 'day_notes_storage.dart';
 import 'fertility.dart';
 import 'period_storage.dart';
 
@@ -37,10 +38,12 @@ class CalendarPage extends StatefulWidget {
 
 class _CalendarPageState extends State<CalendarPage> {
   final _storage = PeriodStorage();
+  final _notesStorage = DayNotesStorage();
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   DateTime? _periodStart;
   DateTime? _periodEnd;
+  Map<String, DayEntry> _notes = {};
 
   @override
   void initState() {
@@ -51,10 +54,12 @@ class _CalendarPageState extends State<CalendarPage> {
   Future<void> _loadSaved() async {
     final start = await _storage.loadStart();
     final end = await _storage.loadEnd();
+    final notes = await _notesStorage.load();
     if (!mounted) return;
     setState(() {
       _periodStart = start;
       _periodEnd = end;
+      _notes = notes;
     });
   }
 
@@ -70,7 +75,7 @@ class _CalendarPageState extends State<CalendarPage> {
     final day = _selectedDay!;
     final start = _periodStart;
     if (start == null) {
-      _showMessage('Nejdřív označte začátek menstruace.');
+      _showMessage('Nejdřív označ začátek menstruace.');
       return;
     }
     if (day.isBefore(start)) {
@@ -81,6 +86,18 @@ class _CalendarPageState extends State<CalendarPage> {
       _periodEnd = day;
     });
     _storage.save(_periodStart, _periodEnd);
+  }
+
+  void _updateEntry(DayEntry entry) {
+    final key = dayKey(_selectedDay!);
+    setState(() {
+      if (entry.isEmpty) {
+        _notes.remove(key);
+      } else {
+        _notes[key] = entry;
+      }
+    });
+    _notesStorage.save(_notes);
   }
 
   void _showMessage(String text) {
@@ -110,6 +127,69 @@ class _CalendarPageState extends State<CalendarPage> {
             'Pouze orientační, není antikoncepce.',
             style: TextStyle(fontStyle: FontStyle.italic),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dayDetail() {
+    final day = _selectedDay;
+    if (day == null) return const SizedBox.shrink();
+
+    final entry = _notes[dayKey(day)] ?? const DayEntry();
+    final title = DateFormat('d. M.', 'cs_CZ').format(day);
+    final heading = Theme.of(context).textTheme.titleMedium;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Divider(),
+          Text('Jak se cítíš $title?', style: heading),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            children: [
+              for (var i = 0; i < moods.length; i++)
+                ChoiceChip(
+                  label: Text(moods[i], style: const TextStyle(fontSize: 22)),
+                  selected: entry.mood == i,
+                  onSelected: (selected) => _updateEntry(
+                    DayEntry(
+                      mood: selected ? i : null,
+                      symptoms: entry.symptoms,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text('Příznaky', style: heading),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final symptom in symptomOptions)
+                FilterChip(
+                  label: Text(symptom),
+                  selected: entry.symptoms.contains(symptom),
+                  onSelected: (selected) {
+                    final updated = {...entry.symptoms};
+                    if (selected) {
+                      updated.add(symptom);
+                    } else {
+                      updated.remove(symptom);
+                    }
+                    _updateEntry(
+                      DayEntry(mood: entry.mood, symptoms: updated),
+                    );
+                  },
+                ),
+            ],
+          ),
+          const SizedBox(height: 24),
         ],
       ),
     );
@@ -176,6 +256,17 @@ class _CalendarPageState extends State<CalendarPage> {
                     ),
                   );
                 },
+                markerBuilder: (context, day, events) {
+                  final mood = _notes[dayKey(day)]?.mood;
+                  if (mood == null) return null;
+                  return Positioned(
+                    bottom: 2,
+                    child: Text(
+                      moods[mood],
+                      style: const TextStyle(fontSize: 10),
+                    ),
+                  );
+                },
               ),
               selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
               onDaySelected: (selectedDay, focusedDay) {
@@ -200,6 +291,7 @@ class _CalendarPageState extends State<CalendarPage> {
               ],
             ),
             _fertilityInfo(),
+            _dayDetail(),
           ],
         ),
       ),
