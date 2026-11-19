@@ -5,8 +5,10 @@ import 'package:table_calendar/table_calendar.dart';
 
 import 'day_notes_storage.dart';
 import 'fertility.dart';
+import 'home_page.dart';
 import 'period_storage.dart';
 import 'profile_storage.dart';
+import 'striped_background.dart';
 import 'welcome_page.dart';
 
 Future<void> main() async {
@@ -31,6 +33,11 @@ class CycleCalendarApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.pink),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+        ),
       ),
       home: const StartGate(),
     );
@@ -74,26 +81,34 @@ class _StartGateState extends State<StartGate> {
     });
   }
 
+  void _openCalendar() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const CalendarPage()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Scaffold();
+    if (_loading) {
+      return const StripedBackground(
+        child: Scaffold(backgroundColor: Colors.transparent),
+      );
+    }
 
     final name = _name;
     if (name == null || _editing) {
       return WelcomePage(initialName: name ?? '', onDone: _finish);
     }
-    return CalendarPage(
+    return HomePage(
       userName: name,
+      onOpenCalendar: _openCalendar,
       onEditName: () => setState(() => _editing = true),
     );
   }
 }
 
 class CalendarPage extends StatefulWidget {
-  const CalendarPage({super.key, this.userName = '', this.onEditName});
-
-  final String userName;
-  final VoidCallback? onEditName;
+  const CalendarPage({super.key});
 
   @override
   State<CalendarPage> createState() => _CalendarPageState();
@@ -166,17 +181,6 @@ class _CalendarPageState extends State<CalendarPage> {
   void _showMessage(String text) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(text)),
-    );
-  }
-
-  Widget _greeting() {
-    final name = widget.userName;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: Text(
-        name.isEmpty ? 'Vítej ve Feel & Flow' : 'Vítej, $name',
-        style: Theme.of(context).textTheme.titleLarge,
-      ),
     );
   }
 
@@ -318,113 +322,135 @@ class _CalendarPageState extends State<CalendarPage> {
   Widget build(BuildContext context) {
     final daySelected = _selectedDay != null;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Feel & Flow 🌸'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person_outline),
-            tooltip: 'Změnit oslovení',
-            onPressed: widget.onEditName,
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _greeting(),
-            TableCalendar(
-              locale: 'cs_CZ',
-              firstDay: DateTime.utc(2020, 1, 1),
-              lastDay: DateTime.utc(2035, 12, 31),
-              focusedDay: _focusedDay,
-              startingDayOfWeek: StartingDayOfWeek.monday,
-              headerStyle: const HeaderStyle(
-                formatButtonVisible: false,
-                titleCentered: true,
-              ),
-              rangeStartDay: _periodStart,
-              rangeEndDay: _periodEnd,
-              calendarStyle: CalendarStyle(
-                rangeHighlightColor: Colors.pink.shade100,
-                todayDecoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  shape: BoxShape.circle,
+    return StripedBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(title: const Text('Kalendář')),
+        body: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TableCalendar(
+                locale: 'cs_CZ',
+                firstDay: DateTime.utc(2020, 1, 1),
+                lastDay: DateTime.utc(2035, 12, 31),
+                focusedDay: _focusedDay,
+                startingDayOfWeek: StartingDayOfWeek.monday,
+                headerStyle: const HeaderStyle(
+                  formatButtonVisible: false,
+                  titleCentered: true,
                 ),
-                todayTextStyle: const TextStyle(color: Colors.black87),
-                rangeStartDecoration: const BoxDecoration(
-                  color: Colors.pink,
-                  shape: BoxShape.circle,
+                rangeStartDay: _periodStart,
+                rangeEndDay: _periodEnd,
+                calendarStyle: CalendarStyle(
+                  rangeHighlightColor: Colors.pink.shade100,
+                  todayDecoration: const BoxDecoration(
+                    color: Color(0xFFFFD54F),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0x99FFC107),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                  todayTextStyle: const TextStyle(color: Colors.black87),
+                  rangeStartDecoration: const BoxDecoration(
+                    color: Colors.pink,
+                    shape: BoxShape.circle,
+                  ),
+                  rangeEndDecoration: const BoxDecoration(
+                    color: Colors.pink,
+                    shape: BoxShape.circle,
+                  ),
                 ),
-                rangeEndDecoration: const BoxDecoration(
-                  color: Colors.pink,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              calendarBuilders: CalendarBuilders(
-                defaultBuilder: (context, day, focusedDay) {
-                  final start = _periodStart;
-                  if (start == null) return null;
-                  final level = fertilityLevel(day, start);
-                  if (level == FertilityLevel.none) return null;
-                  final peak = level == FertilityLevel.peak;
-                  return Tooltip(
-                    message: fertilityLabel(level),
-                    child: Container(
+                calendarBuilders: CalendarBuilders(
+                  selectedBuilder: (context, day, focusedDay) {
+                    final isPeriodEdge = isSameDay(day, _periodStart) ||
+                        isSameDay(day, _periodEnd);
+                    return Container(
                       margin: const EdgeInsets.all(6),
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: fertilityColor(level),
+                        color: isPeriodEdge ? Colors.pink : null,
+                        border: Border.all(
+                          color: Colors.pink.shade700,
+                          width: 2,
+                        ),
                       ),
                       child: Text(
                         '${day.day}',
                         style: TextStyle(
-                          color: peak ? Colors.white : Colors.black87,
+                          color: isPeriodEdge ? Colors.white : Colors.black87,
                         ),
                       ),
-                    ),
-                  );
-                },
-                markerBuilder: (context, day, events) {
-                  final mood = _notes[dayKey(day)]?.mood;
-                  if (mood == null) return null;
-                  return Positioned(
-                    bottom: 2,
-                    child: Text(
-                      moods[mood],
-                      style: const TextStyle(fontSize: 10),
-                    ),
-                  );
+                    );
+                  },
+                  defaultBuilder: (context, day, focusedDay) {
+                    final start = _periodStart;
+                    if (start == null) return null;
+                    final level = fertilityLevel(day, start);
+                    if (level == FertilityLevel.none) return null;
+                    final peak = level == FertilityLevel.peak;
+                    return Tooltip(
+                      message: fertilityLabel(level),
+                      child: Container(
+                        margin: const EdgeInsets.all(6),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: fertilityColor(level),
+                        ),
+                        child: Text(
+                          '${day.day}',
+                          style: TextStyle(
+                            color: peak ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                  markerBuilder: (context, day, events) {
+                    final mood = _notes[dayKey(day)]?.mood;
+                    if (mood == null) return null;
+                    return Positioned(
+                      bottom: 2,
+                      child: Text(
+                        moods[mood],
+                        style: const TextStyle(fontSize: 10),
+                      ),
+                    );
+                  },
+                ),
+                selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+                onDaySelected: (selectedDay, focusedDay) {
+                  setState(() {
+                    _selectedDay = selectedDay;
+                    _focusedDay = focusedDay;
+                  });
                 },
               ),
-              selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-              onDaySelected: (selectedDay, focusedDay) {
-                setState(() {
-                  _selectedDay = selectedDay;
-                  _focusedDay = focusedDay;
-                });
-              },
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                FilledButton(
-                  onPressed: daySelected ? _setStart : null,
-                  child: const Text('Začátek'),
-                ),
-                OutlinedButton(
-                  onPressed: daySelected ? _setEnd : null,
-                  child: const Text('Konec'),
-                ),
-              ],
-            ),
-            _legend(),
-            _fertilityInfo(),
-            _dayDetail(),
-          ],
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  FilledButton(
+                    onPressed: daySelected ? _setStart : null,
+                    child: const Text('Začátek'),
+                  ),
+                  OutlinedButton(
+                    onPressed: daySelected ? _setEnd : null,
+                    child: const Text('Konec'),
+                  ),
+                ],
+              ),
+              _legend(),
+              _fertilityInfo(),
+              _dayDetail(),
+            ],
+          ),
         ),
       ),
     );
