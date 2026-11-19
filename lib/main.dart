@@ -344,10 +344,11 @@ class _CalendarPageState extends State<CalendarPage> {
                 rangeEndDay: _periodEnd,
                 calendarStyle: CalendarStyle(
                   rangeHighlightColor: Colors.pink.shade100,
-                  todayDecoration: const BoxDecoration(
-                    color: Color(0xFFFFD54F),
+                  todayDecoration: BoxDecoration(
+                    color: const Color(0xFFFFD54F),
                     shape: BoxShape.circle,
-                    boxShadow: [
+                    border: Border.all(color: Colors.white, width: 2),
+                    boxShadow: const [
                       BoxShadow(
                         color: Color(0x99FFC107),
                         blurRadius: 8,

@@ -5,7 +5,7 @@ class StripedBackground extends StatelessWidget {
 
   final Widget child;
 
-  static const backgroundColor = Color(0xFFFFF7D6);
+ static const backgroundColor = Color(0xFFFFE680);
 
   @override
   Widget build(BuildContext context) {
